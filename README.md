@@ -1,6 +1,6 @@
 # xolchade.github.io
 
-Портфолио: Telegram Mini Apps, боты, UI/UX. Без сборки и фреймворков — чистый HTML/CSS/JS
-(View Transitions, Speculation Rules, @starting-style, oklch).
+Portfolio: Telegram Mini Apps, bots, UI/UX. No build step, no framework — plain HTML/CSS/JS
+(View Transitions, Speculation Rules, light-dark(), @starting-style, oklch). Light & dark themes.
 
-Работы и контакты меняются в одном файле — `works.js`.
+Projects and contacts live in one file — `works.js`.

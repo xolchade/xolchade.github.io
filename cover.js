@@ -1,4 +1,4 @@
-// Обложка-заглушка: рисуется кодом по типу работы
+// Placeholder cover drawn in CSS by project type
 export function cover(w, size = "") {
   const inner = {
     miniapp: `<i class="m-top"></i><i class="m-card"></i><i class="m-row"></i><i class="m-row s"></i><i class="m-btn"></i>`,

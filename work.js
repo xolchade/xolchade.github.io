@@ -1,4 +1,4 @@
-// Страница работы: собирается из works.js по ?id=
+// Project page: built from works.js by ?id=
 import { works, categories } from "./works.js";
 import { cover } from "./cover.js";
 
@@ -14,15 +14,15 @@ document.getElementById("case").innerHTML = `
   <div class="case-head">
     <p class="case-meta"><span>${categories[w.kind]}</span><span>${w.year}</span></p>
     <h1>${w.title}</h1>
-    <p class="lede">Описание проекта появится скоро.</p>
+    <p class="lede">Case study coming soon.</p>
   </div>
   <div class="case-cover" style="view-transition-name: cover-${w.id}">${cover(w, "xl")}</div>
   <dl class="case-body">
-    <dt>Задача</dt><dd>Текст появится вместе с проектом.</dd>
-    <dt>Решение</dt><dd>Текст появится вместе с проектом.</dd>
-    <dt>Результат</dt><dd>Текст появится вместе с проектом.</dd>
+    <dt>Challenge</dt><dd>Details land with the case study.</dd>
+    <dt>Solution</dt><dd>Details land with the case study.</dd>
+    <dt>Result</dt><dd>Details land with the case study.</dd>
   </dl>
   <a class="next" href="work.html?id=${next.id}">
-    <small>Следующая работа</small>
+    <small>Next project</small>
     <span>${next.title}</span>
   </a>`;

@@ -1,4 +1,4 @@
-// Главная: чат-визитка, список работ, фильтры
+// Home: chat intro, project list, filters
 import { works, categories, contacts } from "./works.js";
 import { cover } from "./cover.js";
 
@@ -10,7 +10,7 @@ $("#tg").href = contacts.telegram;
 $("#gh").href = contacts.github;
 $("#y").textContent = new Date().getFullYear();
 
-// --- чат ---
+// --- chat ---
 const thread = $("#thread");
 const status = $("#status");
 
@@ -24,7 +24,7 @@ function bubble(text, who = "bot") {
 }
 
 async function botSay(text) {
-  status.textContent = "печатает…";
+  status.textContent = "typing…";
   const dots = document.createElement("li");
   dots.className = "msg bot typing";
   dots.innerHTML = "<i></i><i></i><i></i>";
@@ -32,21 +32,21 @@ async function botSay(text) {
   await wait(Math.min(400 + text.length * 14, 1300));
   dots.remove();
   bubble(text);
-  status.textContent = "в сети";
+  status.textContent = "online";
 }
 
 (async () => {
   await wait(350);
-  await botSay("Привет! Я xolchade 👋");
-  await botSay("Проектирую и собираю Telegram Mini Apps, ботов и интерфейсы к ним.");
-  await botSay("Что показать?");
+  await botSay("Hey! I’m xolchade 👋");
+  await botSay("I design and ship Telegram Mini Apps, bots and the UI that ties them together.");
+  await botSay("So, what do you wanna see?");
   $("#keyboard").hidden = false;
 })();
 
 const replies = {
-  works: "Лови список — открывается ниже.",
-  process: "Коротко: разбор задачи, прототип, сборка, запуск. Подробнее ниже.",
-  contact: "Отлично! Жду в Telegram.",
+  works: "Sure thing — scrolling you down 👇",
+  process: "TL;DR: we nail the brief, I prototype, I build, we ship. Details below.",
+  contact: "Love that! Hit me up on Telegram 🚀",
 };
 
 $("#keyboard").addEventListener("click", async (e) => {
@@ -58,7 +58,7 @@ $("#keyboard").addEventListener("click", async (e) => {
   document.getElementById(b.dataset.go).scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
 });
 
-// --- список работ ---
+// --- project list ---
 const list = $("#list");
 
 function render(filter) {
@@ -68,7 +68,7 @@ function render(filter) {
       <li style="view-transition-name: row-${w.id}">
         <a class="row" href="work.html?id=${w.id}" data-id="${w.id}">
           <span class="thumb" style="view-transition-name: cover-${w.id}">${cover(w, "sm")}</span>
-          <span class="t">${w.title}<small>Описание появится скоро</small></span>
+          <span class="t">${w.title}<small>Case study dropping soon</small></span>
           <span class="k">${categories[w.kind]}</span>
           <span class="yr">${w.year}</span>
         </a>
@@ -85,7 +85,7 @@ $(".filters").addEventListener("click", (e) => {
   document.startViewTransition && !reduce ? document.startViewTransition(go) : go();
 });
 
-// --- превью за курсором (только мышь) ---
+// --- cursor-following preview (mouse only) ---
 const floater = $("#floater");
 if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
   let x = 0, y = 0, fx = 0, fy = 0, raf;
@@ -106,5 +106,5 @@ if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
   list.addEventListener("pointerleave", () => { floater.classList.remove("on"); cancelAnimationFrame(raf); });
 }
 
-// При переходе на работу — убираем плавающее превью из снимка
+// Hide the floating preview before page transition snapshot
 addEventListener("pageswap", () => floater.classList.remove("on"));

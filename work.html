@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Работа — xolchade</title>
-  <meta name="theme-color" content="#EDF0F4">
+  <script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch{}</script>
+  <title>Project — xolchade</title>
+  <meta name="theme-color" content="#EDF0F4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#12152B" media="(prefers-color-scheme: dark)">
+  <meta property="og:image" content="https://xolchade.github.io/og.png">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,10 +17,14 @@
 </head>
 <body>
   <header class="bar">
-    <a class="logo" href="./" aria-label="На главную">xolchade</a>
-    <nav aria-label="Разделы">
-      <a href="./#works">Все работы</a>
-      <a href="./#contact">Связаться</a>
+    <a class="logo" href="./" aria-label="Home">xolchade</a>
+    <nav aria-label="Sections">
+      <a href="./#works">All work</a>
+      <a href="./#contact">Contact</a>
+      <button class="theme" id="theme" aria-label="Switch theme">
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+      </button>
     </nav>
   </header>
 
@@ -25,7 +32,8 @@
 
   <footer class="foot">
     <span>© <span id="y"></span> xolchade</span>
-    <a href="./">На главную</a>
+    <a href="./">Home</a>
   </footer>
+  <script type="module" src="theme.js"></script>
 </body>
 </html>
