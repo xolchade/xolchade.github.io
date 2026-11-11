@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>xolchade — Telegram Mini Apps, боты и интерфейсы</title>
+  <meta name="description" content="Проектирую и собираю Telegram Mini Apps, ботов и интерфейсы.">
+  <meta name="theme-color" content="#EDF0F4">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="modulepreload" href="works.js">
+  <script type="speculationrules">
+    { "prerender": [{ "where": { "href_matches": "*work.html*" }, "eagerness": "moderate" }] }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#works">К работам</a>
+
+  <header class="bar">
+    <a class="logo" href="./" aria-label="На главную">xolchade</a>
+    <nav aria-label="Разделы">
+      <a href="#works">Работы</a>
+      <a href="#process">Как работаю</a>
+      <a href="#contact">Связаться</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Делаю Telegram Mini Apps, ботов и&nbsp;интерфейсы к&nbsp;ним</h1>
+        <p class="lede">От идеи и макета до работающего продукта внутри Telegram.</p>
+      </div>
+
+      <div class="chat" aria-label="Чат с ботом-визиткой">
+        <div class="chat-head">
+          <span class="avatar" aria-hidden="true">x</span>
+          <div>
+            <b>xolchade</b>
+            <small id="status">печатает…</small>
+          </div>
+        </div>
+        <ol class="thread" id="thread" aria-live="polite"></ol>
+        <div class="keyboard" id="keyboard" hidden>
+          <button data-go="works">Покажи работы</button>
+          <button data-go="process">Как ты работаешь?</button>
+          <button data-go="contact" class="wide">Хочу обсудить проект</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="works" class="works">
+      <div class="works-head">
+        <h2>Работы</h2>
+        <div class="filters" role="group" aria-label="Фильтр работ">
+          <button aria-pressed="true" data-filter="all">Все</button>
+          <button aria-pressed="false" data-filter="miniapp">Mini Apps</button>
+          <button aria-pressed="false" data-filter="bot">Боты</button>
+          <button aria-pressed="false" data-filter="ui">UI/UX</button>
+        </div>
+      </div>
+      <ul class="list" id="list"></ul>
+      <div class="floater" id="floater" aria-hidden="true"></div>
+    </section>
+
+    <section id="process" class="process">
+      <h2>Как работаю</h2>
+      <ol class="steps">
+        <li><h3>Разбираемся в задаче</h3><p>Созваниваемся, фиксирую цель, аудиторию и сроки.</p></li>
+        <li><h3>Проектирую</h3><p>Сценарии, прототип и макеты в Figma — до первой строчки кода.</p></li>
+        <li><h3>Собираю</h3><p>Mini App, бот или оба сразу. Показываю промежуточные версии.</p></li>
+        <li><h3>Запускаем</h3><p>Публикация, проверка на реальных пользователях, доработки.</p></li>
+      </ol>
+    </section>
+
+    <section id="contact" class="contact">
+      <h2>Есть идея для Telegram?</h2>
+      <p>Напишите — отвечу в течение дня.</p>
+      <a class="cta" id="tg" href="#">Написать в Telegram</a>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>© <span id="y"></span> xolchade</span>
+    <a id="gh" href="#">GitHub</a>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
