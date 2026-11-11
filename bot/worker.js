@@ -1,7 +1,7 @@
 // xolchade bot — Telegram bot for Cloudflare Workers
 // Env vars: BOT_TOKEN (secret), OWNER_ID (your Telegram id), SETUP_KEY (any password)
 
-const SITE = "https://xolchade.github.io";
+const SITE = "https://xolchade.dev";
 
 
 const mainKeyboard = {
