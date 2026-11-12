@@ -1,11 +1,10 @@
-// Home page: hero, chat demo, marquee, work grid, pinned process, page wire, footer wordmark
+// Home page: hero, chat demo, marquee, work grid, pinned process, footer wordmark
 import { works, categories, filters, stack, stackAI } from "./works.js";
 import { cover } from "./cover.js";
 import { $, $$, clamp, reduce, fine, onFrame, request, scrollToEl, openEgg } from "./ui.js";
-import { initGL } from "./gl.js";
 
 const root = document.documentElement;
-const intro = root.classList.contains("skip-intro") ? 100 : 950;
+const intro = root.classList.contains("skip-intro") ? 100 : 550;
 const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
 const mobile = matchMedia("(max-width: 899px)");
 
@@ -27,26 +26,14 @@ const mobile = matchMedia("(max-width: 899px)");
   walk(el);
 })($(".split"));
 
-// ---------- WebGL wires ----------
-const hero = $(".hero"), canvas = $("#gl"), chat = $("#chat"), ports = $(".ports");
+// ---------- particle cloud: loads after first paint, the page never waits for it ----------
+const hero = $(".hero"), canvas = $("#gl"), keys = $$(".k");
+const mark = (i) => keys.forEach((k, j) => k.classList.toggle("on", i < 0 || i === j));
 const lowEnd = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
-const glw = initGL(canvas, {
-  still: reduce || lowEnd,
-  isVertical: () => mobile.matches,
-  target: () => {
-    const c = canvas.getBoundingClientRect(), p = ports.getBoundingClientRect();
-    return { x: p.left + p.width / 2 - c.left, y: p.top + p.height / 2 - c.top, gap: 18 };
-  },
-});
-if (glw) {
-  glw.start(intro / 1000 + 0.2);
-  if (fine) {
-    hero.addEventListener("pointermove", (e) => { const r = canvas.getBoundingClientRect(); glw.pointer(e.clientX - r.left, e.clientY - r.top); }, { passive: true });
-    hero.addEventListener("pointerleave", () => glw.pointer(-9999, -9999));
-  }
-  onFrame((sy, v) => glw.scroll(v));
-  document.fonts?.ready.then(() => glw.refresh());
-}
+const idle = window.requestIdleCallback || ((f) => setTimeout(f, 200));
+addEventListener("load", () => idle(() => import("./cloud.js").then(({ initCloud }) => {
+  return initCloud(canvas, { hero, still: reduce || lowEnd, mobile: () => mobile.matches, onShape: mark });
+}).then((cloud) => (cloud ? cloud.start() : mark(-1))).catch(() => mark(-1))), { once: true });
 
 // ---------- chat demo (texts mirrored in bot/worker.js) ----------
 const thread = $("#thread"), status = $("#status"), keyboard = $("#keyboard");
@@ -137,15 +124,12 @@ $$(".svc").forEach((el, i) => el.style.setProperty("--d", i * 90));
 watch($$(".reveal, .reveal-mask"));
 
 // ---------- stack marquee ----------
-const colors = ["tg", "api", "ai", "ui", "d3"];
 function marquee(el, items) {
-  const html = items.map((t, i) => `<span class="it" style="--c:var(--${colors[i % colors.length]})">${t}</span>`).join("");
+  const html = items.map((t) => `<span class="it">${t}</span>`).join("");
   el.innerHTML = `<div class="run">${html}</div><div class="run" aria-hidden="true">${html}</div><div class="run" aria-hidden="true">${html}</div>`;
 }
 marquee($("#mq1"), stack);
 marquee($("#mq2"), stackAI);
-const stackEl = $(".stack");
-if (!reduce) onFrame((sy, v) => stackEl.style.setProperty("--skew", `${clamp(-v * 0.12, -8, 8)}deg`));
 
 // ---------- work grid ----------
 const grid = $("#grid"), filtersEl = $("#filters");
@@ -160,17 +144,17 @@ function spans(n) {
   }
   return out;
 }
+const tag = (k) => (filters.find((f) => f.kinds.includes(k)) || {}).color || "tg";
 function render(key, animate) {
   const f = filters.find((x) => x.key === key);
   const list = works.filter((w) => !f.kinds.length || f.kinds.includes(w.kind));
   const sp = spans(list.length);
   grid.innerHTML = list.map((w, i) => `
-    <a class="card${animate ? " reveal" : ""}" href="work.html?id=${w.id}" data-cursor="Open" style="--h:${w.hue};--cs:${sp[i][0]};--rs:${sp[i][1]};--d:${(i % 3) * 60};view-transition-name:card-${w.id}">
+    <a class="card${animate ? " reveal" : ""}" href="work.html?id=${w.id}" data-cursor="Open" style="--t:var(--${tag(w.kind)});--cs:${sp[i][0]};--rs:${sp[i][1]};--d:${(i % 3) * 60};view-transition-name:card-${w.id}">
       <span class="cover" style="view-transition-name:cover-${w.id}">${cover(w)}</span>
-      <span class="cap"><span><b>${w.title}</b><small>${categories[w.kind]}</small></span><span class="yr">${w.year}</span></span>
+      <span class="cap"><span><b>${w.title}</b><small><i></i>${categories[w.kind]}</small></span><span class="yr">${w.year}</span></span>
     </a>`).join("");
   if (animate) watch($$(".card", grid));
-  buildWire();
 }
 filtersEl.innerHTML = filters.map((f) => `<button class="chip" data-key="${f.key}" aria-pressed="${f.key === "all"}">${f.color ? `<i style="--c:var(--${f.color})"></i>` : ""}${f.label}</button>`).join("");
 filtersEl.addEventListener("click", (e) => {
@@ -183,19 +167,21 @@ filtersEl.addEventListener("click", (e) => {
 
 // 3D tilt + spotlight + parallax on cards (mouse only)
 if (fine && !reduce) {
-  grid.addEventListener("pointermove", (e) => {
+  const tilt = (e) => {
     const card = e.target.closest(".card");
-    if (!card) return;
+    if (!card || e.pointerType !== "mouse") return;
     const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
     const k = Math.min(1, 520 / r.width);
     card.classList.add("tilt");
     card.style.setProperty("--ry", `${(x - 0.5) * 14 * k}deg`);
     card.style.setProperty("--rx", `${(0.5 - y) * 12 * k}deg`);
-    card.style.setProperty("--mx", `${x * 100}%`);
-    card.style.setProperty("--my", `${y * 100}%`);
+    card.style.setProperty("--sx", `${e.clientX - r.left}px`);
+    card.style.setProperty("--sy", `${e.clientY - r.top}px`);
     card.style.setProperty("--px", `${(x - 0.5) * -20}px`);
     card.style.setProperty("--py", `${(y - 0.5) * -16}px`);
-  }, { passive: true });
+  };
+  grid.addEventListener("pointermove", tilt, { passive: true });
+  grid.addEventListener("pointerover", tilt, { passive: true });
   grid.addEventListener("pointerout", (e) => {
     const card = e.target.closest(".card");
     if (!card || card.contains(e.relatedTarget)) return;
@@ -207,85 +193,41 @@ if (fine && !reduce) {
 addEventListener("pageswap", () => $(".cursor")?.classList.remove("on"));
 
 // ---------- pinned "How I work" ----------
-const proc = $("#process"), track = $("#track"), rail = $(".rail"), steps = $$(".step");
+const proc = $("#process"), track = $("#track"), rail = $(".rail i"), steps = $$(".step");
+const pinQuery = matchMedia("(min-width: 900px) and (prefers-reduced-motion: no-preference)");
 let pinned = false, maxX = 0, procTop = 0;
-function layoutProcess() {
-  pinned = !mobile.matches && !reduce;
-  proc.classList.toggle("pinned", pinned);
-  if (!pinned) { proc.style.height = ""; track.style.transform = ""; return; }
-  proc.style.height = "";
-  maxX = Math.max(0, track.scrollWidth - innerWidth);
-  proc.style.height = `${innerHeight + maxX}px`;
+// Read sizes right after layout, never in the middle of a script
+new ResizeObserver(() => {
+  pinned = pinQuery.matches;
+  maxX = pinned ? proc.offsetHeight - innerHeight : 0;
   procTop = proc.getBoundingClientRect().top + scrollY;
-}
+  if (!pinned) track.style.transform = "";
+  request();
+}).observe(document.body);
 onFrame((sy) => {
   if (!pinned) return;
-  const p = maxX ? clamp((sy - procTop) / maxX, 0, 1) : 0;
+  const p = maxX > 0 ? clamp((sy - procTop) / maxX, 0, 1) : 0;
   track.style.transform = `translate3d(${-p * maxX}px,0,0)`;
-  rail.style.setProperty("--p", p);
+  rail.style.transform = `scaleX(${p})`;
   steps.forEach((s, i) => s.classList.toggle("on", p >= i / steps.length - 0.02));
 });
 
-// ---------- the wire running down the page ----------
-const main = $("#main"), wire = $("#wire");
-let head = { y0: 0, y1: 0, sx: 0, gx: 0, gaps: [], end: 0 }, nodes = [];
-function buildWire() {
-  const m = main.getBoundingClientRect();
-  const box = (el) => { const r = el.getBoundingClientRect(); return { l: r.left - m.left, t: r.top - m.top, r: r.right - m.left, b: r.bottom - m.top, w: r.width, h: r.height }; };
-  const lineY = (el) => { const b = box(el); return b.t + Math.min(b.h, parseFloat(getComputedStyle(el).fontSize) * 0.92) / 2; };
-  const firstH = box($(".services h2"));
-  const gx = Math.round(firstH.l * 0.45), r = Math.min(18, gx);
-  const wrap = box($(".chat-wrap")), copy = box($(".hero-copy"));
-  const sx = wrap.l + wrap.w / 2, y0 = wrap.b + 10;
-  const y1 = Math.max(y0 + 34, copy.b + 34);
-  const cta = $(".contact h2"), cy = lineY(cta), cl = box(cta).l;
-  const p = box(proc);
-  let d = `M${sx} ${y0}V${y1 - r}Q${sx} ${y1} ${sx - r} ${y1}H${gx + r}Q${gx} ${y1} ${gx} ${y1 + r}`;
-  const gaps = [];
-  if (pinned) { d += `V${p.t}M${gx} ${p.b}`; gaps.push([p.t, p.b]); }
-  d += `V${cy - r}Q${gx} ${cy} ${gx + r} ${cy}H${cl - 14}`;
-  nodes = $$("[data-node]").map((el) => ({ y: lineY(el), x: el === cta ? cl - 14 : gx, stub: el === cta ? 0 : box(el).l - 14 }));
-  const stubs = nodes.filter((n) => n.stub).map((n) => `M${gx} ${n.y}H${n.stub}`).join("");
-  const dots = nodes.map((n, i) => `<circle class="node" data-i="${i}" cx="${n.stub || n.x}" cy="${n.y}" r="4.5"/>`).join("");
-  const body = `<path d="${d}${stubs}"/>${dots}`;
-  wire.innerHTML = `<defs><clipPath id="wc"><rect id="wr" x="-20" y="0" width="99999" height="0"/></clipPath></defs>
-    <g class="ghost">${body}</g><g clip-path="url(#wc)">${body}</g><circle class="head" id="wh" r="4"/>`;
-  head = { y0, y1, sx, gx, gaps, end: cy };
-  request();
-}
-onFrame((sy) => {
-  const wr = $("#wr"), wh = $("#wh");
-  if (!wr) return;
-  const hy = reduce ? 1e6 : sy + innerHeight * 0.6;
-  wr.setAttribute("height", Math.max(0, hy));
-  const inGap = head.gaps.some(([a, b]) => hy > a && hy < b);
-  const show = hy > head.y0 && hy < head.end && !inGap;
-  wh.style.opacity = show ? 1 : 0;
-  wh.setAttribute("cx", hy < head.y1 ? head.sx : head.gx);
-  wh.setAttribute("cy", hy);
-  $$("g[clip-path] .node", wire).forEach((n) => n.classList.toggle("on", hy >= nodes[n.dataset.i].y));
-});
-
-// ---------- footer wordmark: letters get heavier near the cursor ----------
+// ---------- footer wordmark: letters duck away from the cursor ----------
 const wm = $("#wordmark");
 wm.innerHTML = [...wm.textContent].map((ch) => `<span>${ch}</span>`).join("");
 if (fine && !reduce) {
   const letters = $$("span", wm);
-  wm.addEventListener("pointermove", (e) => letters.forEach((l) => {
-    const r = l.getBoundingClientRect(), dx = Math.abs(e.clientX - r.left - r.width / 2);
-    l.style.setProperty("--wg", Math.round(800 - 600 * Math.max(0, 1 - dx / (r.width * 2.2))));
+  let box = [];
+  wm.addEventListener("pointerenter", () => { box = letters.map((l) => { const r = l.getBoundingClientRect(); return [r.left + r.width / 2, r.width * 2.2]; }); });
+  wm.addEventListener("pointermove", (e) => letters.forEach((l, i) => {
+    if (!box[i]) return;
+    const k = Math.max(0, 1 - Math.abs(e.clientX - box[i][0]) / box[i][1]);
+    l.style.transform = `translate3d(0,${(k * k * 16).toFixed(1)}%,0)`;
   }), { passive: true });
-  wm.addEventListener("pointerleave", () => letters.forEach((l) => l.style.removeProperty("--wg")));
+  wm.addEventListener("pointerleave", () => letters.forEach((l) => { l.style.transform = ""; }));
 }
 let taps = 0, tapT;
 wm.addEventListener("click", () => { clearTimeout(tapT); tapT = setTimeout(() => (taps = 0), 1200); if (++taps >= 5) { taps = 0; openEgg(); } });
 
-// ---------- layout ----------
-function layout() { layoutProcess(); buildWire(); }
-render("all", true);
-layout();
-let rt;
-addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(layout, 120); });
-mobile.addEventListener("change", layout);
-document.fonts?.ready.then(layout);
-addEventListener("load", layout);
+// The grid is below the fold: build it in its own task
+(window.requestIdleCallback || setTimeout)(() => render("all", true), { timeout: 300 });

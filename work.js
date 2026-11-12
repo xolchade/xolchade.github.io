@@ -11,10 +11,10 @@ const color = (k) => (filters.find((f) => f.kinds.includes(k)) || {}).color || "
 document.title = `${w.title} — xolchade`;
 document.getElementById("case").innerHTML = `
   <a class="back ul" href="./#work">All work</a>
-  <p class="case-meta"><span class="kind" style="--c:var(--${color(w.kind)})"><i></i>${categories[w.kind]}</span><span>${w.year}</span></p>
+  <p class="case-meta"><span class="kind" style="--t:var(--${color(w.kind)})"><i></i>${categories[w.kind]}</span><span>${w.year}</span></p>
   <h1 class="display">${w.title}</h1>
   <p class="lede">Case study dropping soon.</p>
-  <div class="case-cover" style="--h:${w.hue};view-transition-name:cover-${w.id}">${cover(w)}</div>
+  <div class="case-cover" style="view-transition-name:cover-${w.id}">${cover(w)}</div>
   <dl class="case-body">
     <dt>Challenge</dt><dd>Details land with the case study.</dd>
     <dt>Solution</dt><dd>Details land with the case study.</dd>
@@ -24,7 +24,7 @@ document.getElementById("case").innerHTML = `
     <small>Next project</small>
     <span>${next.title}</span>
   </a>
-  <div class="floater" id="floater" style="--h:${next.hue}" aria-hidden="true">${cover(next)}</div>`;
+  <div class="floater" id="floater" aria-hidden="true">${cover(next)}</div>`;
 
 // Shared UI (links, cursor, smooth scroll) loads after the page is painted
 import("./ui.js").then(({ fine, reduce }) => {
@@ -32,7 +32,7 @@ import("./ui.js").then(({ fine, reduce }) => {
   // Preview of the next project follows the cursor
   const link = document.getElementById("next"), fl = document.getElementById("floater");
   let x = 0, y = 0, fx = 0, fy = 0, raf = 0;
-  const loop = () => { fx += (x - fx) * 0.18; fy += (y - fy) * 0.18; fl.style.translate = `${fx}px ${fy}px`; raf = requestAnimationFrame(loop); };
+  const loop = () => { fx += (x - fx) * 0.18; fy += (y - fy) * 0.18; fl.style.transform = `translate3d(${fx}px,${fy}px,0)`; raf = requestAnimationFrame(loop); };
   link.addEventListener("pointermove", (e) => { x = e.clientX; y = e.clientY; }, { passive: true });
   link.addEventListener("pointerenter", (e) => { fx = x = e.clientX; fy = y = e.clientY; fl.classList.add("on"); cancelAnimationFrame(raf); loop(); });
   link.addEventListener("pointerleave", () => { fl.classList.remove("on"); cancelAnimationFrame(raf); });

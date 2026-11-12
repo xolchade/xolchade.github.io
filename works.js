@@ -18,7 +18,7 @@ export const categories = {
   "3d": "2D/3D",
 };
 
-// Portfolio filter: label → which kinds it shows, color = CSS variable of the wire
+// Portfolio filter: label → which kinds it shows, color = CSS variable of the tag dot
 export const filters = [
   { key: "all", label: "All", kinds: [] },
   { key: "telegram", label: "Telegram", kinds: ["miniapp", "bot"], color: "tg" },

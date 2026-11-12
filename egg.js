@@ -71,8 +71,8 @@ function snake() {
     body.unshift(head);
     if (head[0] === food[0] && head[1] === food[1]) { score++; place(); } else body.pop();
     g.clearRect(0, 0, cv.width, cv.height);
-    g.fillStyle = "#FFB340"; g.beginPath(); g.arc(food[0] * S + S / 2, food[1] * S + S / 2, S / 2 - 3, 0, 7); g.fill();
-    body.forEach(([x, y], i) => { g.fillStyle = i ? "#55A2FF" : "#F1F3FA"; g.beginPath(); g.roundRect(x * S + 1, y * S + 1, S - 2, S - 2, 4); g.fill(); });
+    g.fillStyle = "#2AABEE"; g.beginPath(); g.arc(food[0] * S + S / 2, food[1] * S + S / 2, S / 2 - 3, 0, 7); g.fill();
+    body.forEach(([x, y], i) => { g.fillStyle = i ? "#F4F1EA" : "#2AABEE"; g.beginPath(); g.roundRect(x * S + 1, y * S + 1, S - 2, S - 2, 4); g.fill(); });
   }, 110);
   game = () => { clearInterval(timer); removeEventListener("keydown", onKey, true); input.focus(); };
   input.blur();

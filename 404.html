@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch{}</script>
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"light"}catch{}</script>
   <title>Page not found — xolchade</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
@@ -16,7 +16,7 @@
     </div>
     <ol class="thread">
       <li class="msg me">Where’s this page?</li>
-      <li class="msg bot">Yikes, 404. This wire isn’t plugged into anything.</li>
+      <li class="msg bot">Yikes, 404. Nothing lives at this address.</li>
       <li class="msg bot">Let’s get you back on track.</li>
     </ol>
     <div class="keyboard">

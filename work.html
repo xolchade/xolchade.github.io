@@ -3,11 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>(()=>{const d=document.documentElement;d.classList.add("js","skip-intro");try{const t=localStorage.getItem("theme");if(t)d.dataset.theme=t;sessionStorage.setItem("seen","1")}catch{}})()</script>
+  <script>(()=>{const d=document.documentElement;d.classList.add("js","skip-intro");try{d.dataset.theme=localStorage.getItem("theme")||"light";sessionStorage.setItem("seen","1")}catch{}})()</script>
   <title>Project — xolchade</title>
   <meta name="description" content="A project by xolchade: Telegram Mini Apps, bots, API and AI integrations.">
-  <meta name="theme-color" content="#F3F4F8" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#090D1A" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4F1EA">
   <meta property="og:image" content="https://xolchade.dev/og.png">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/bricolage.woff" as="font" type="font/woff" crossorigin>
