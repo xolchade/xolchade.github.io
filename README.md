@@ -1,7 +1,7 @@
 # xolchade.dev
 
 Portfolio: Telegram Mini Apps & bots, API integrations, AI integrations, UI/UX, 2D/3D.
-No build step, no dependencies: plain HTML/CSS/ES modules, a raw WebGL shader for the hero,
+No build step, no dependencies: plain HTML/CSS/ES modules, a raw WebGL particle cloud in the hero,
 one self-hosted variable font. Light & dark themes.
 
 - `works.js` — projects, contacts, stack. The only file to edit for content (search for `[ЗАМЕНИТЬ]`).
