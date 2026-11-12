@@ -3,22 +3,33 @@
 
 const SITE = "https://xolchade.dev";
 
+// Labels for project kinds from works.js
+const kinds = { miniapp: "Mini App", bot: "Bot", api: "API", ai: "AI", ui: "UI/UX", "3d": "2D/3D" };
 
 const mainKeyboard = {
   inline_keyboard: [
-    [{ text: "Show me your work", callback_data: "works" }, { text: "How do you work?", callback_data: "process" }],
-    [{ text: "Let’s build something", callback_data: "contact" }],
+    [{ text: "Show me your work", callback_data: "works" }, { text: "What can you build?", callback_data: "services" }],
+    [{ text: "How do you work?", callback_data: "process" }, { text: "Let’s build something", callback_data: "contact" }],
     [{ text: "🌐 Open portfolio", web_app: { url: SITE } }],
   ],
 };
+
+const servicesText = [
+  "<b>Mini Apps &amp; bots, API integrations, AI features and the UI on top.</b>",
+  "",
+  "<b>Telegram Mini Apps &amp; bots</b>\nYour product lives where your users already hang out. No app store, no installs: one tap and they’re in.",
+  "<b>API integrations</b>\nPayments, CRMs, spreadsheets, whatever you run on. I make your tools talk to each other.",
+  "<b>AI inside the product</b>\nText, images, assistants, automations. AI models plugged into real user flows.",
+  "<b>UI/UX design</b>\nInterfaces that feel native to Telegram and obvious on the first tap.",
+].join("\n");
 
 const processText = [
   "<b>TL;DR: we nail the brief, I prototype, I build, we ship.</b>",
   "",
   "<b>1. Nail the brief</b>\nA quick call to lock in the goal, the audience and the timeline.",
-  "<b>2. Prototype first</b>\nFlows, a clickable prototype and Figma mockups before a single line of code.",
-  "<b>3. Build it</b>\nMini App, bot or both. You see progress along the way — no black box.",
-  "<b>4. Ship it</b>\nLaunch, test with real users, polish what needs polishing.",
+  "<b>2. Prototype first</b>\nUser flows and a clickable prototype before any code.",
+  "<b>3. Build &amp; wire it up</b>\nMini App, bot, integrations, AI. You see progress along the way: no black box.",
+  "<b>4. Ship &amp; polish</b>\nLaunch, test with real users, fix what needs fixing.",
 ].join("\n");
 
 export default {
@@ -87,9 +98,12 @@ async function handle(u, env) {
 
     if (q.data === "works") {
       const works = await loadWorks();
-      const rows = works.map((w) => [{ text: w.title, url: `${SITE}/work.html?id=${w.id}` }]);
+      const rows = works.map((w) => [{ text: kinds[w.kind] ? `${w.title} (${kinds[w.kind]})` : w.title, url: `${SITE}/work.html?id=${w.id}` }]);
       rows.push([{ text: "🌐 Open full portfolio", web_app: { url: SITE } }]);
       return say(env, chat, "Sure thing 👇 Tap any project to check it out.", { reply_markup: { inline_keyboard: rows } });
+    }
+    if (q.data === "services") {
+      return say(env, chat, servicesText, { reply_markup: { inline_keyboard: [[{ text: "Show me your work", callback_data: "works" }], [{ text: "Let’s build something", callback_data: "contact" }]] } });
     }
     if (q.data === "process") {
       return say(env, chat, processText, { reply_markup: { inline_keyboard: [[{ text: "Let’s build something", callback_data: "contact" }]] } });
@@ -107,10 +121,11 @@ async function handle(u, env) {
 
   if (text.startsWith("/start")) {
     await say(env, chat, "Hey! I’m xolchade 👋");
-    await say(env, chat, "I design and ship Telegram Mini Apps, bots and the UI that ties them together.");
-    return say(env, chat, "So, what do you wanna see?", { reply_markup: mainKeyboard });
+    await say(env, chat, "I wire Telegram, APIs and AI into products that actually work.");
+    return say(env, chat, "What do you wanna see?", { reply_markup: mainKeyboard });
   }
   if (text.startsWith("/work")) return handle({ callback_query: { id: "0", data: "works", message: m } }, env);
+  if (text.startsWith("/services")) return handle({ callback_query: { id: "0", data: "services", message: m } }, env);
   if (text.startsWith("/process")) return handle({ callback_query: { id: "0", data: "process", message: m } }, env);
   if (text.startsWith("/contact")) return handle({ callback_query: { id: "0", data: "contact", message: m } }, env);
   if (text.startsWith("/myid")) return say(env, chat, `Your Telegram id: <code>${m.from.id}</code>`);
@@ -145,12 +160,13 @@ async function setup(env, origin) {
       commands: [
         { command: "start", description: "Say hi 👋" },
         { command: "work", description: "Show my projects" },
+        { command: "services", description: "What I can build" },
         { command: "process", description: "How I work" },
         { command: "contact", description: "Pitch me your idea" },
       ],
     }),
     menu: await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: "Portfolio", web_app: { url: SITE } } }),
-    description: await tg(env, "setMyDescription", { description: "Hey! I build Telegram Mini Apps, bots & slick UI. Tap Start to see my work or pitch me your idea 🚀" }),
-    short: await tg(env, "setMyShortDescription", { short_description: "Telegram Mini Apps, bots & slick UI. Portfolio + DM me your idea." }),
+    description: await tg(env, "setMyDescription", { description: "Hey! I wire Telegram, APIs and AI into products that work: Mini Apps, bots, integrations. Tap Start to see my work or pitch me your idea 🚀" }),
+    short: await tg(env, "setMyShortDescription", { short_description: "Telegram Mini Apps, bots, API & AI integrations. Portfolio + DM me your idea." }),
   };
 }
