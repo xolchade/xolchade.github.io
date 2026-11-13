@@ -4,9 +4,11 @@
 
 export const contacts = {
   upwork: "https://www.upwork.com/",      // [ЗАМЕНИТЬ] ссылка на профиль Upwork
-  telegram: "https://t.me/xolchade",      // [ЗАМЕНИТЬ] ник или ссылка на бота
+  telegram: "https://t.me/xolchade_bot",
   github: "https://github.com/xolchade",
   email: "hello@xolchade.dev",            // [ЗАМЕНИТЬ] почта
+  chatApi: "https://xolchade-bot.xolchade.workers.dev",   // live chat: URL of the bot worker (empty = scripted chat)
+  turnstileKey: "0x4AAAAAAF_WDD6Ug4m8AvwZ",   // live chat anti-spam: Turnstile site key (public)
 };
 
 export const categories = {
