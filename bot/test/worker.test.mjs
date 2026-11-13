@@ -98,7 +98,7 @@ beforeEach(() => {
   failNextThread = null;
   tgDelay = 0;
   ctx = fakeCtx();
-  env = { BOT_TOKEN: "T", SETUP_KEY: KEY, TURNSTILE_SECRET: "ts", ALLOWED_ORIGINS: SITE };
+  env = { BOT_TOKEN: "T", SETUP_KEY: KEY, TURNSTILE_SECRET: "ts", REQUIRE_TURNSTILE: "0", ALLOWED_ORIGINS: SITE };
   hub = new Hub(ctx, env);
   env.HUB = { idFromName: () => "hub", get: () => ({ fetch: (i, init) => hub.fetch(i instanceof Request ? i : new Request(i, init)) }) };
 });
@@ -149,7 +149,8 @@ test("/bind: wrong key ignored, group without topics warned, right key binds and
   assert.equal(sent("deleteMessage").length, 1);
 });
 
-test("first message needs Turnstile, then opens a topic with an intro card", async () => {
+test("with Turnstile on, the first message needs it, then opens a topic with an intro card", async () => {
+  env.REQUIRE_TURNSTILE = "1";
   await bind();
   calls = [];
   const bad = await call("/api/send", { method: "POST", body: { sid: SID, text: "hi", turnstile: "bad" } });
@@ -319,4 +320,29 @@ test("a failed Telegram delivery is retried once", async () => {
   failNextThread = 101; // one failure on the existing topic → recreated topic
   await send("again");
   assert.ok(sent("sendMessage").some((c) => c.body.text === "again"));
+});
+
+test("Turnstile is off by default: the first message goes through without a token", async () => {
+  await bind();
+  const r = await call("/api/send", { method: "POST", body: { sid: SID, text: "no captcha" } });
+  assert.equal(r.status, 200);
+  assert.equal(sent("createForumTopic").length, 1);
+});
+
+test("an IP can open 10 new chats a day; the 11th is refused, existing chats keep working", async () => {
+  await bind();
+  const ip = { "CF-Connecting-IP": "5.5.5.5" };
+  const sids = Array.from({ length: 11 }, (_, i) => `sid-${String(i).padStart(2, "0")}-aaaaaaaaaaaa`);
+  for (let i = 0; i < 10; i++) {
+    const r = await call("/api/send", { method: "POST", body: { sid: sids[i], text: `hi ${i}` }, headers: ip });
+    assert.equal(r.status, 200, `chat ${i + 1}`);
+  }
+  const eleventh = await call("/api/send", { method: "POST", body: { sid: sids[10], text: "hi 11" }, headers: ip });
+  assert.equal(eleventh.status, 429);
+  assert.equal((await eleventh.json()).error, "new_chat_limit");
+  assert.equal(sent("createForumTopic").length, 10);
+  const again = await call("/api/send", { method: "POST", body: { sid: sids[0], text: "still here" }, headers: ip });
+  assert.equal(again.status, 200, "an existing chat from the same IP still works");
+  const other = await call("/api/send", { method: "POST", body: { sid: sids[10], text: "other ip" }, headers: { "CF-Connecting-IP": "6.6.6.6" } });
+  assert.equal(other.status, 200, "another IP is not affected");
 });

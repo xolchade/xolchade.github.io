@@ -117,12 +117,14 @@ async function api(req, url, env, hub) {
   if (!text) return json({ error: "empty" }, 400);
   if (text.length > MAX_TEXT) return json({ error: "too_long", max: MAX_TEXT }, 400);
 
-  // Turnstile only for the first message of a session; verify in parallel with the lookup
-  const [known, human] = await Promise.all([
-    hub().fetch(`https://hub/known?sid=${body.sid}`).then((r) => r.json()),
-    env.TURNSTILE_SECRET && body.turnstile ? verifyTurnstile(env, body.turnstile, meta.ip) : Promise.resolve(false),
-  ]);
-  if (!known.known && env.TURNSTILE_SECRET && !human) return json({ error: "captcha" }, 403);
+  // Optional Turnstile (off by default): only the first message of a session is checked
+  if (env.REQUIRE_TURNSTILE === "1" && env.TURNSTILE_SECRET) {
+    const [known, human] = await Promise.all([
+      hub().fetch(`https://hub/known?sid=${body.sid}`).then((r) => r.json()),
+      body.turnstile ? verifyTurnstile(env, body.turnstile, meta.ip) : Promise.resolve(false),
+    ]);
+    if (!known.known && !human) return json({ error: "captcha" }, 403);
+  }
 
   return hub().fetch("https://hub/send", {
     method: "POST",
@@ -316,7 +318,8 @@ export class Hub {
   // ---------- site visitor ----------
 
   async onVisitorMessage({ sid, cid, text, meta }) {
-    if (!this.hit(`ip:${meta.ip}:day`, 80, 86400e3) || !this.hit(`sid:${sid}:min`, 6, 60e3) || !this.hit(`sid:${sid}:day`, 60, 86400e3)) {
+    // one IP is often shared by many people (mobile carriers, offices), so its limits are generous
+    if (!this.hit(`sid:${sid}:min`, 6, 60e3) || !this.hit(`sid:${sid}:day`, 60, 86400e3) || !this.hit(`ip:${meta.ip}:day`, 300, 86400e3)) {
       return Response.json({ error: "rate_limited" }, { status: 429 });
     }
 
@@ -328,6 +331,10 @@ export class Hub {
 
     let s = this.session(sid);
     const isNew = !s;
+    // at most 10 new chats (= new topics) per IP per day
+    if (isNew && !this.hit(`ip:${meta.ip}:new`, 10, 86400e3)) {
+      return Response.json({ error: "new_chat_limit" }, { status: 429 });
+    }
     if (isNew) {
       const label = `${flag(meta.country)} Site visitor #${short(sid)}${meta.country ? ` · ${meta.country}` : ""}`;
       this.sql.exec(`INSERT INTO sessions (sid, label, created, last) VALUES (?, ?, ?, ?)`, sid, label, Date.now(), Date.now());

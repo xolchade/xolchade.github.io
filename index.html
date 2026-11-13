@@ -320,6 +320,8 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .leave button:disabled { opacity: .5; }
 .chat.is-live .chat-head small::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--ui); vertical-align: 1px; }
 .chat.is-live.is-away .chat-head small::before { background: var(--mute); }
+.msg .alt { display: flex; gap: 8px; margin-top: 10px; }
+.msg .alt a { padding: 7px 14px; border-radius: 999px; background: var(--acc); color: var(--on-acc); font-weight: 700; font-size: 14px; text-decoration: none; }
 .ts-box { position: fixed; left: 50%; bottom: 24px; translate: -50% 0; z-index: 90; }
 
 /* ---------- reveals ---------- */

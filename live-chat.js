@@ -38,14 +38,14 @@ const live = {
 };
 
 const ui = () => window.__chat; // hooks exported by the main script
-const statusText = () => (live.status === "online" ? "online" : "replies within a few hours");
+const statusText = () => ({ online: "online", away: "replies within a few hours", unreachable: "message me on Telegram" })[live.status];
 
 function setStatus(s) {
-  live.status = s === "away" ? "away" : "online";
+  live.status = ["away", "unreachable"].includes(s) ? s : "online";
   window.__chatStatus = statusText();
   const el = $("#status");
   if (el && el.textContent !== "typing…") el.textContent = statusText();
-  $("#chat")?.classList.toggle("is-away", live.status === "away");
+  $("#chat")?.classList.toggle("is-away", live.status !== "online");
 }
 
 // ---------- rendering ----------
@@ -90,6 +90,30 @@ function showHistory(messages) {
     if (m.who === "v") ui().add(m.text, "me");
     else if (m.who === "o") ui().add(m.text);
   }
+}
+
+// when the chat server can't be reached (blocked network) or a limit is hit: offer other ways, once per page
+let fellBack = false;
+function fallback(reason) {
+  if (fellBack) return;
+  fellBack = true;
+  const text =
+    reason === "limit"
+      ? "Looks like a lot of new chats came from your network today, so this one didn’t go through. Reach me here instead 👇"
+      : "Hmm, your network can’t reach my chat server right now (some providers block it). Reach me here instead 👇";
+  live.queue = live.queue.then(async () => {
+    const li = await ui().typing(text);
+    const links = document.createElement("span");
+    links.className = "alt";
+    const add = (href, label) => {
+      const a = Object.assign(document.createElement("a"), { href, textContent: label, target: "_blank", rel: "noopener" });
+      links.append(a);
+    };
+    if (contacts.telegram) add(contacts.telegram, "Telegram");
+    if (contacts.email) add(`mailto:${contacts.email}`, "Email");
+    li.append(links);
+    ui().thread.scrollTop = ui().thread.scrollHeight;
+  });
 }
 
 // small inline form: email or @telegram
@@ -256,7 +280,14 @@ async function send(text) {
       return;
     }
     li.classList.add("failed");
-    const msg = { captcha: "couldn’t verify you’re human", rate_limited: "too fast, try in a minute", too_long: "too long (1000 chars max)" }[r?.error] || "not sent";
+    if (!r) {
+      setStatus("unreachable");
+      fallback("network");
+    }
+    if (r?.error === "new_chat_limit") fallback("limit");
+    const msg =
+      { captcha: "couldn’t verify you’re human", rate_limited: "too fast, try in a minute", too_long: "too long (1000 chars max)", new_chat_limit: "not sent" }[r?.error] ||
+      (r ? "not sent" : "no connection");
     meta.innerHTML = "";
     meta.append(`${msg} · `);
     const again = Object.assign(document.createElement("button"), { type: "button", className: "retry", textContent: "retry" });
@@ -282,7 +313,10 @@ function start() {
   const noteEl = $(".chat-note");
   if (noteEl) noteEl.innerHTML = `Buttons are a quick tour. Anything you type lands in my Telegram, and I answer right here. Or <a data-link="telegram" href="${contacts.telegram}" target="_blank" rel="noopener">DM me</a>.`;
 
-  fetch(`${API}/api/status`).then((r) => r.json()).then((d) => setStatus(d.status)).catch(() => {});
+  fetch(`${API}/api/status`)
+    .then((r) => r.json())
+    .then((d) => setStatus(d.status))
+    .catch(() => setStatus("unreachable")); // blocked network: say so in the header right away
 
   if (live.sid) {
     fetch(`${API}/api/state?sid=${live.sid}`)
