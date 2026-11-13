@@ -16,10 +16,10 @@ npx wrangler login
 npx wrangler secret put BOT_TOKEN          # from @BotFather
 npx wrangler secret put SETUP_KEY          # any long password
 npx wrangler secret put TURNSTILE_SECRET   # Turnstile widget secret key
-npx wrangler deploy                        # prints https://xolchade-bot.<you>.workers.dev
+npx wrangler deploy                        # prints https://api.xolchade.dev (custom domain; the workers.dev URL is blocked by some providers)
 ```
 
-1. Open `https://xolchade-bot.<you>.workers.dev/setup?key=<SETUP_KEY>` once (webhook, commands, menu).
+1. Open `https://api.xolchade.dev (custom domain; the workers.dev URL is blocked by some providers)/setup?key=<SETUP_KEY>` once (webhook, commands, menu).
 2. In the inbox group (Topics on, bot is admin with "Manage topics") send `/bind <SETUP_KEY>`. The bot deletes that message.
 3. In `works.js` set `chatApi` to the worker URL and `turnstileKey` to the Turnstile site key.
 

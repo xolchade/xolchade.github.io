@@ -38,10 +38,10 @@ const live = {
 };
 
 const ui = () => window.__chat; // hooks exported by the main script
-const statusText = () => ({ online: "online", away: "replies within a few hours", unreachable: "message me on Telegram" })[live.status];
+const statusText = () => ({ checking: "connecting…", online: "online", away: "replies within a few hours", unreachable: "message me on Telegram" })[live.status];
 
 function setStatus(s) {
-  live.status = ["away", "unreachable"].includes(s) ? s : "online";
+  live.status = ["away", "unreachable", "checking"].includes(s) ? s : "online";
   window.__chatStatus = statusText();
   const el = $("#status");
   if (el && el.textContent !== "typing…") el.textContent = statusText();
@@ -69,12 +69,18 @@ function mine(text) {
   return { li, meta };
 }
 
+// queue helper: a failed step is logged, the next ones still run
+function enqueue(fn) {
+  live.queue = live.queue.then(fn).catch((e) => console.warn("chat", e));
+  return live.queue;
+}
+
 function showOwner(m, animate = true) {
   if (live.seen.has(m.id)) return;
   live.seen.add(m.id);
   live.lastId = Math.max(live.lastId, m.id);
   clearTimeout(live.nudgeTimer);
-  live.queue = live.queue.then(async () => {
+  enqueue(async () => {
     if (animate) await ui().typing(m.text);
     else ui().add(m.text);
   });
@@ -100,8 +106,10 @@ function fallback(reason) {
   const text =
     reason === "limit"
       ? "Looks like a lot of new chats came from your network today, so this one didn’t go through. Reach me here instead 👇"
-      : "Hmm, your network can’t reach my chat server right now (some providers block it). Reach me here instead 👇";
-  live.queue = live.queue.then(async () => {
+      : reason === "server"
+        ? "Something went wrong on my side, sorry. Reach me here instead 👇"
+        : "Hmm, your network can’t reach my chat server right now (some providers block it). Reach me here instead 👇";
+  enqueue(async () => {
     const li = await ui().typing(text);
     const links = document.createElement("span");
     links.className = "alt";
@@ -121,7 +129,7 @@ function askContact() {
   if (live.nudged || live.contact) return;
   live.nudged = true;
   store.set("xc_nudged", "1");
-  live.queue = live.queue.then(async () => {
+  enqueue(async () => {
     const li = await ui().typing("Wanna leave your email or Telegram handle, in case I miss you here?");
     const form = document.createElement("form");
     form.className = "leave";
@@ -152,7 +160,9 @@ function askContact() {
 // ---------- network ----------
 
 async function post(path, body) {
-  const r = await fetch(API + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 12e3);
+  const r = await fetch(API + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: ac.signal }).finally(() => clearTimeout(t));
   const data = await r.json().catch(() => ({}));
   return { ok: r.ok, status: r.status, ...data };
 }
@@ -270,7 +280,7 @@ async function send(text) {
       if (r.status) setStatus(r.status);
       if (!live.known) {
         live.known = true;
-        live.queue = live.queue.then(() =>
+        enqueue(() =>
           ui().typing(live.status === "online" ? "Sent to my Telegram ✓ I’ll answer right here, usually within minutes." : "Sent to my Telegram ✓ I’m away right now, but I’ll answer right here.")
         );
         connect();
@@ -283,11 +293,11 @@ async function send(text) {
     if (!r) {
       setStatus("unreachable");
       fallback("network");
-    }
-    if (r?.error === "new_chat_limit") fallback("limit");
+    } else if (r.error === "new_chat_limit") fallback("limit");
+    else if (!["rate_limited", "too_long", "captcha"].includes(r.error)) fallback("server");
     const msg =
       { captcha: "couldn’t verify you’re human", rate_limited: "too fast, try in a minute", too_long: "too long (1000 chars max)", new_chat_limit: "not sent" }[r?.error] ||
-      (r ? "not sent" : "no connection");
+      (r ? `not sent (${r.error || r.status})` : "no connection");
     meta.innerHTML = "";
     meta.append(`${msg} · `);
     const again = Object.assign(document.createElement("button"), { type: "button", className: "retry", textContent: "retry" });
@@ -313,7 +323,11 @@ function start() {
   const noteEl = $(".chat-note");
   if (noteEl) noteEl.innerHTML = `Buttons are a quick tour. Anything you type lands in my Telegram, and I answer right here. Or <a data-link="telegram" href="${contacts.telegram}" target="_blank" rel="noopener">DM me</a>.`;
 
-  fetch(`${API}/api/status`)
+  setStatus("checking");
+  // a blocked network can leave a request hanging forever: give up after 8 s
+  const ac = new AbortController();
+  setTimeout(() => ac.abort(), 8e3);
+  fetch(`${API}/api/status`, { signal: ac.signal })
     .then((r) => r.json())
     .then((d) => setStatus(d.status))
     .catch(() => setStatus("unreachable")); // blocked network: say so in the header right away

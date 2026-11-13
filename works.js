@@ -7,7 +7,7 @@ export const contacts = {
   telegram: "https://t.me/xolchade_bot",
   github: "https://github.com/xolchade",
   email: "hello@xolchade.dev",            // [ЗАМЕНИТЬ] почта
-  chatApi: "https://xolchade-bot.xolchade.workers.dev",   // live chat: URL of the bot worker (empty = scripted chat)
+  chatApi: "https://api.xolchade.dev",   // live chat: URL of the bot worker (empty = scripted chat)
   turnstileKey: "",   // optional Turnstile site key; off now (to turn on: 0x4AAAAAAF_WDD6Ug4m8AvwZ + REQUIRE_TURNSTILE = "1" in bot/wrangler.toml)
 };
 
