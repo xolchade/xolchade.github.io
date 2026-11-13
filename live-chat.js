@@ -212,6 +212,19 @@ function captcha() {
   );
 }
 
+// Turnstile tokens live 5 minutes; keep one ready from the moment the visitor shows intent to type
+let warm = null;
+function prewarm() {
+  if (!SITE_KEY || live.known) return;
+  if (warm && Date.now() - warm.at < 240e3) return;
+  warm = { at: Date.now(), token: captcha().catch(() => "") };
+}
+function takeToken() {
+  const ready = warm && Date.now() - warm.at < 280e3 ? warm.token : captcha().catch(() => "");
+  warm = null;
+  return ready;
+}
+
 async function send(text) {
   const first = !live.known;
   if (!live.sid) {
@@ -224,7 +237,7 @@ async function send(text) {
     li.classList.add("pending");
     li.classList.remove("failed");
     meta.textContent = "sending…";
-    const turnstile = first ? await captcha().catch(() => "") : "";
+    const turnstile = first ? await takeToken() : "";
     const r = await post("/api/send", { sid: live.sid, cid, text, turnstile, page: location.pathname }).catch(() => null);
     li.classList.remove("pending");
     if (r?.ok) {
@@ -262,7 +275,10 @@ function start() {
   live.send = send;
   $("#chat")?.classList.add("is-live");
   const input = $("#q");
-  if (input) input.placeholder = "Write to me, I answer here…";
+  if (input) {
+    input.placeholder = "Write to me, I answer here…";
+    for (const ev of ["focus", "pointerdown", "keydown"]) input.addEventListener(ev, prewarm, { passive: true });
+  }
   const noteEl = $(".chat-note");
   if (noteEl) noteEl.innerHTML = `Buttons are a quick tour. Anything you type lands in my Telegram, and I answer right here. Or <a data-link="telegram" href="${contacts.telegram}" target="_blank" rel="noopener">DM me</a>.`;
 

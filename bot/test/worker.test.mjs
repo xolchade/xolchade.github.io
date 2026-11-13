@@ -64,12 +64,13 @@ function fakeCtx() {
   };
 }
 
-let calls, topicSeq, failNextThread;
+let calls, topicSeq, failNextThread, tgDelay = 0;
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input instanceof Request ? input.url : input);
   if (url.includes("api.telegram.org")) {
     const method = url.split("/").pop();
     const body = JSON.parse(init.body);
+    if (tgDelay) await new Promise((r) => setTimeout(r, tgDelay));
     calls.push({ method, body });
     if (method === "createForumTopic") return NodeResponse.json({ ok: true, result: { message_thread_id: ++topicSeq } });
     if (method === "sendMessage" && failNextThread && body.message_thread_id === failNextThread) {
@@ -95,6 +96,7 @@ beforeEach(() => {
   calls = [];
   topicSeq = 100;
   failNextThread = null;
+  tgDelay = 0;
   ctx = fakeCtx();
   env = { BOT_TOKEN: "T", SETUP_KEY: KEY, TURNSTILE_SECRET: "ts", ALLOWED_ORIGINS: SITE };
   hub = new Hub(ctx, env);
@@ -111,6 +113,7 @@ async function call(path, { method = "GET", body, origin = SITE, headers = {} } 
   });
   const res = await worker.fetch(req, env, runCtx);
   await Promise.all(waits.splice(0));
+  await hub.settled();
   return res;
 }
 const tgUpdate = (update) => call("/", { method: "POST", body: update, headers: { "X-Telegram-Bot-Api-Secret-Token": KEY } });
@@ -283,4 +286,37 @@ test("the bot's DM menu still works and reads projects from works.js", async () 
   await tgUpdate({ callback_query: { id: "q1", data: "works", message: { chat: { id: VISITOR_TG } } } });
   const msg = sent("sendMessage").at(-1).body;
   assert.equal(msg.reply_markup.inline_keyboard[0][0].text, "Lead bot (Bot)");
+});
+
+test("the visitor gets an answer before Telegram delivery finishes", async () => {
+  await bind();
+  tgDelay = 400; // slow Telegram
+  const req = new Request("https://bot.example/api/send", { method: "POST", headers: { Origin: SITE, "content-type": "application/json" }, body: JSON.stringify({ sid: SID, text: "fast?", turnstile: "good" }) });
+  const t0 = Date.now();
+  const res = await worker.fetch(req, env, runCtx);
+  const took = Date.now() - t0;
+  assert.equal(res.status, 200);
+  assert.ok(took < 300, `answered in ${took} ms`);
+  await hub.settled();
+  assert.equal(sent("createForumTopic").length, 1);
+  assert.equal(sent("sendMessage").at(-1).body.message_thread_id, 101);
+});
+
+test("a burst of messages from a new visitor opens exactly one topic, in order", async () => {
+  await bind();
+  tgDelay = 50;
+  await Promise.all(["one", "two", "three"].map((text, i) => send(text, { cid: `b${i}` })));
+  await hub.settled();
+  assert.equal(sent("createForumTopic").length, 1);
+  const texts = sent("sendMessage").filter((c) => c.body.message_thread_id === 101).map((c) => c.body.text.split("\n\n").at(-1));
+  assert.deepEqual(texts, ["one", "two", "three"]);
+});
+
+test("a failed Telegram delivery is retried once", async () => {
+  await bind();
+  await send("hello");
+  calls = [];
+  failNextThread = 101; // one failure on the existing topic → recreated topic
+  await send("again");
+  assert.ok(sent("sendMessage").some((c) => c.body.text === "again"));
 });

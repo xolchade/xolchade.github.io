@@ -117,12 +117,12 @@ async function api(req, url, env, hub) {
   if (!text) return json({ error: "empty" }, 400);
   if (text.length > MAX_TEXT) return json({ error: "too_long", max: MAX_TEXT }, 400);
 
-  // Turnstile only for the first message of a session: the hub tells us if it is new
-  const known = await (await hub().fetch(`https://hub/known?sid=${body.sid}`)).json();
-  if (!known.known && env.TURNSTILE_SECRET) {
-    const ok = await verifyTurnstile(env, body.turnstile, meta.ip);
-    if (!ok) return json({ error: "captcha" }, 403);
-  }
+  // Turnstile only for the first message of a session; verify in parallel with the lookup
+  const [known, human] = await Promise.all([
+    hub().fetch(`https://hub/known?sid=${body.sid}`).then((r) => r.json()),
+    env.TURNSTILE_SECRET && body.turnstile ? verifyTurnstile(env, body.turnstile, meta.ip) : Promise.resolve(false),
+  ]);
+  if (!known.known && env.TURNSTILE_SECRET && !human) return json({ error: "captcha" }, 403);
 
   return hub().fetch("https://hub/send", {
     method: "POST",
@@ -190,6 +190,29 @@ export class Hub {
       id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT, who TEXT, text TEXT, cid TEXT, ts INTEGER)`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS messages_sid ON messages (sid, id)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS hits (k TEXT PRIMARY KEY, n INTEGER, reset INTEGER)`);
+    this.queues = new Map(); // sid → promise: Telegram deliveries per visitor, in order
+  }
+
+  // Telegram delivery runs after the visitor already has their answer; per-visitor order is kept,
+  // so a burst of messages never opens two topics. Retries once after a short pause.
+  deliver(sid, html) {
+    const run = async () => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (await this.toOwner(this.session(sid), html)) return;
+        } catch (e) {
+          console.log("deliver error", e.stack);
+        }
+        await sleep(1500);
+      }
+    };
+    const next = (this.queues.get(sid) || Promise.resolve()).then(run);
+    this.queues.set(sid, next);
+    next.then(() => this.queues.get(sid) === next && this.queues.delete(sid));
+    return next;
+  }
+  settled() {
+    return Promise.all([...this.queues.values()]);
   }
 
   // small helpers over SQLite
@@ -315,7 +338,7 @@ export class Hub {
     const intro = isNew
       ? `🌐 <b>New chat from xolchade.dev</b>\n${[meta.city, meta.country].filter(Boolean).join(", ") || "Location unknown"}${meta.page ? ` · ${esc(meta.page)}` : ""}\nReply in this topic: it shows up in their chat live.\n\n`
       : "";
-    await this.toOwner(s, `${intro}${esc(text)}`);
+    this.deliver(sid, `${intro}${esc(text)}`);
     return Response.json({ ok: true, id: m.id, ts: m.ts, status: this.presence() });
   }
 
@@ -325,7 +348,7 @@ export class Hub {
     if (!this.hit(`sid:${sid}:contact`, 5, 86400e3)) return Response.json({ error: "rate_limited" }, { status: 429 });
     this.sql.exec(`UPDATE sessions SET contact = ? WHERE sid = ?`, contact, sid);
     this.addMessage(sid, "s", `Contact left: ${contact}`);
-    await this.toOwner(s, `📇 <b>Contact left:</b> ${esc(contact)}`);
+    this.deliver(sid, `📇 <b>Contact left:</b> ${esc(contact)}`);
     return Response.json({ ok: true });
   }
 
@@ -342,7 +365,7 @@ export class Hub {
       }
       if (topic) {
         const r = await tg(this.env, "sendMessage", { chat_id: group, message_thread_id: topic, text: html, parse_mode: "HTML", link_preview_options: { is_disabled: true } });
-        if (r.ok) return;
+        if (r.ok) return true;
         // topic was deleted in Telegram: forget it and open a fresh one
         if (/thread not found|TOPIC_DELETED|TOPIC_CLOSED/i.test(r.description || "")) {
           this.sql.exec(`UPDATE sessions SET topic = NULL WHERE sid = ?`, s.sid);
@@ -351,7 +374,8 @@ export class Hub {
       }
     }
     const owner = this.get("owner") || this.env.OWNER_ID;
-    if (owner) await tg(this.env, "sendMessage", { chat_id: owner, text: `${html}\n\n<i>${esc(s.label)}</i> #s${s.sid}`, parse_mode: "HTML" });
+    if (!owner) return true; // nowhere to deliver: the message is still stored
+    return (await tg(this.env, "sendMessage", { chat_id: owner, text: `${html}\n\n<i>${esc(s.label)}</i> #s${s.sid}`, parse_mode: "HTML" })).ok;
   }
 
   // ---------- Telegram updates ----------
