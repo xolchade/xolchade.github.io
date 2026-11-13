@@ -1,10 +1,10 @@
-// Theme toggle: light by default, dark on request
+// Theme toggle: dark by default, light on request
 const root = document.documentElement;
 const btn = document.getElementById("theme");
 const meta = document.querySelector('meta[name="theme-color"]');
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const current = () => root.dataset.theme || "light";
+const current = () => root.dataset.theme || "dark";
 const sync = () => {
   btn.setAttribute("aria-label", current() === "dark" ? "Switch to light theme" : "Switch to dark theme");
   if (meta) meta.content = current() === "dark" ? "#0E0E0E" : "#F4F1EA";
